@@ -1,3 +1,15 @@
+"""
+Statistical aggregation, IQR outlier filtering, and visualization pipeline.
+
+Conforms to:
+- ISO/IEC 25010:2023(E) Clause 3.2.1 (Time behaviour) & Clause 3.8.2 (Scalability):
+  Evaluates how external dynamic time-behaviour measures (encryption time, decryption time,
+  round-trip latency, and effective throughput) scale across growing payload workloads (16 B to 1 MB).
+- ISO/IEC 25010:2023(E) Clause 3.1.2 (Functional correctness) & Clause 3.5.3 (Fault tolerance):
+  Filters dataset to validated successful trials (`success == True`) per Decision 17.
+- IETF RFC 2544 Section 26.2 (mean across >= 20 trials per size) and Section 4 (variance/outlier handling).
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import os

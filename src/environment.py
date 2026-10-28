@@ -1,3 +1,13 @@
+"""
+DUT and test environment metadata recorder.
+
+Conforms to:
+- ISO/IEC 25010:2023(E) Clause 3.2 (Performance efficiency under specified conditions) & Annex C.2
+  (recording target computer system hardware, OS, and runtime context for external dynamic measures)
+- IETF RFC 2544 Section 7 (DUT Set Up) & Section 26 (Reporting Format)
+- NIST FIPS 186-5, SP 800-56A Rev. 3, SP 800-56C Rev. 2, FIPS 197, SP 800-38D, and RFC 5869 configuration tracking
+"""
+
 import platform
 import os
 import json
@@ -5,6 +15,9 @@ import sys
 import cryptography
 import psutil
 import socket
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import config
 
 def get_size(bytes, suffix="B"):
     """Scale bytes to its proper format."""
@@ -50,7 +63,21 @@ def record_environment(output_path):
         "cpu_freq_current": cpu_freq_current,
         "cpu_freq_max": cpu_freq_max,
         "total_ram": total_ram,
-        "hostname": socket.gethostname()
+        "hostname": socket.gethostname(),
+        "cryptographic_parameters": {
+            "ecdh_curve": config.ECDH_CURVE,
+            "kdf_algorithm": config.KDF_ALGORITHM,
+            "aes_key_size_bits": config.AES_KEY_SIZE,
+            "nonce_size_bytes": config.NONCE_SIZE,
+            "tag_size_bytes": config.TAG_SIZE
+        },
+        "benchmark_parameters": {
+            "message_sizes_bytes": config.MESSAGE_SIZES,
+            "warmup_runs_per_size": config.WARMUP_RUNS,
+            "measured_runs_per_size": config.MEASURED_RUNS,
+            "transport_protocol": "TCP (IPv4 Stream, 4-byte Big-Endian Length-Prefixed)"
+        },
+        "methodology_standards": config.STANDARDS_METADATA
     }
     
     with open(output_path, "w") as f:

@@ -23,15 +23,17 @@
     <!-- Centered Segmented Control -->
     <div class="toolbar-section toolbar-center">
       <div class="segmented-control" role="tablist">
-        <button id="btn-app-benchmark" class="segment-item active" role="tab" aria-selected="true" data-app="app" aria-controls="view-app">
+        <button id="btn-app-benchmark" class="segment-item active" role="tab" aria-selected="true" data-app="app"
+          aria-controls="view-app">
           <span class="indicator-dot dot-starting" id="dot-app"></span>
           <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
             <path
               d="M2 12.5a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-1.5zm4.5-4a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-5.5zm4.5-4a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v9.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-9.5z" />
           </svg>
-          <span>Benchmark Suite</span>
+          <span>Benchmark</span>
         </button>
-        <button id="btn-app-chat" class="segment-item" role="tab" aria-selected="false" data-app="chat" aria-controls="container-chat">
+        <button id="btn-app-chat" class="segment-item" role="tab" aria-selected="false" data-app="chat"
+          aria-controls="container-chat">
           <span class="indicator-dot dot-starting" id="dot-chat"></span>
           <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
             <path
@@ -47,14 +49,16 @@
 
       <div class="button-group">
         <!-- Restart Backend -->
-        <button id="btn-restart-backend" class="toolbar-btn" title="Restart Backend (Cmd+Shift+R)" aria-label="Restart Backend">
+        <button id="btn-restart-backend" class="toolbar-btn" title="Restart Backend (Cmd+Shift+R)"
+          aria-label="Restart Backend">
           <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
             <polygon points="8.5 1.5 2 9 7.5 9 7 14.5 14 7 8.5 7 8.5 1.5"></polygon>
           </svg>
         </button>
 
         <!-- Console Drawer -->
-        <button id="btn-toggle-logs" class="toolbar-btn" title="Toggle Console Drawer" aria-label="Toggle Console Drawer" aria-expanded="false" aria-controls="logs-drawer">
+        <button id="btn-toggle-logs" class="toolbar-btn" title="Toggle Console Drawer"
+          aria-label="Toggle Console Drawer" aria-expanded="false" aria-controls="logs-drawer">
           <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
             <rect x="1.5" y="2.5" width="13" height="11" rx="2"></rect>
             <polyline points="4.5 6 7 8 4.5 10"></polyline>
@@ -69,10 +73,12 @@
   <main class="app-viewport">
     <div class="view-stage">
       <!-- 1. Benchmark & Analysis View -->
-      <webview id="view-app" class="stage-view active" src="about:blank" allowpopups autosize="on" role="tabpanel" aria-labelledby="btn-app-benchmark"></webview>
+      <webview id="view-app" class="stage-view active" src="http://127.0.0.1:7860" allowpopups role="tabpanel"
+        aria-labelledby="btn-app-benchmark"></webview>
 
       <!-- 2. Dual Side-by-Side E2EE Chat View -->
-      <div id="container-chat" class="stage-view chat-splitview split-mode" role="tabpanel" aria-labelledby="btn-app-chat">
+      <div id="container-chat" class="stage-view chat-splitview split-mode" role="tabpanel"
+        aria-labelledby="btn-app-chat">
         <!-- Left Pane: Alice -->
         <section class="peer-pane" id="pane-alice">
           <header class="peer-header">
@@ -85,9 +91,14 @@
                 <span class="peer-role">Peer 1 · Ephemeral Session</span>
               </div>
             </div>
+            <button id="btn-reload-alice" class="peer-action-btn" title="Reload Alice" aria-label="Reload Alice">
+              <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9L14 6m0-4.5V6h-4.5"></path>
+              </svg>
+            </button>
           </header>
-          <webview id="view-chat-alice" partition="persist:alice" class="peer-webview" src="about:blank" allowpopups
-            autosize="on"></webview>
+          <webview id="view-chat-alice" partition="alice" class="peer-webview"
+            src="http://127.0.0.1:7861/?user=Alice" allowpopups></webview>
         </section>
 
         <!-- Divider -->
@@ -107,9 +118,14 @@
                 <span class="peer-role">Peer 2 · Ephemeral Session</span>
               </div>
             </div>
+            <button id="btn-reload-bob" class="peer-action-btn" title="Reload Bob" aria-label="Reload Bob">
+              <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9L14 6m0-4.5V6h-4.5"></path>
+              </svg>
+            </button>
           </header>
-          <webview id="view-chat-bob" partition="persist:bob" class="peer-webview" src="about:blank" allowpopups
-            autosize="on"></webview>
+          <webview id="view-chat-bob" partition="bob" class="peer-webview" src="http://127.0.0.1:7861/?user=Bob"
+            allowpopups></webview>
         </section>
       </div>
 
@@ -155,7 +171,8 @@
             <input type="checkbox" id="chk-autoscroll" checked>
             <span>Auto-scroll</span>
           </label>
-          <button id="btn-clear-logs" class="drawer-btn" title="Clear process logs" aria-label="Clear process logs">Clear</button>
+          <button id="btn-clear-logs" class="drawer-btn" title="Clear process logs"
+            aria-label="Clear process logs">Clear</button>
           <button id="btn-close-logs" class="drawer-btn close-btn" aria-label="Close Console Drawer">✕</button>
         </div>
       </header>

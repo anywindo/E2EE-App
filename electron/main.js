@@ -17,7 +17,7 @@ const services = {
     script: 'app.py',
     port: 7860,
     process: null,
-    status: { status: 'starting', app: 'app', port: 7860, message: 'Starting app.py on port 7860...' },
+    status: { status: 'starting', app: 'app', port: 7860, url: 'http://127.0.0.1:7860', message: 'Starting app.py on port 7860...' },
     url: 'http://127.0.0.1:7860'
   },
   chat: {
@@ -25,7 +25,7 @@ const services = {
     script: 'chat_demo.py',
     port: 7861,
     process: null,
-    status: { status: 'starting', app: 'chat', port: 7861, message: 'Starting chat_demo.py on port 7861...' },
+    status: { status: 'starting', app: 'chat', port: 7861, url: 'http://127.0.0.1:7861', message: 'Starting chat_demo.py on port 7861...' },
     url: 'http://127.0.0.1:7861'
   }
 };
@@ -124,7 +124,7 @@ function updateServiceStatus(appKey, statusData) {
   sendToWindow('backend-status', s.status);
 }
 
-function checkServerReady(port, retries = 60, interval = 500) {
+function checkServerReady(port, retries = 180, interval = 500) {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     const intervalId = setInterval(() => {
@@ -154,6 +154,13 @@ function startService(appKey) {
 
   if (s.process && !s.process.killed) {
     console.log(`[Tugas Akhir] Service ${appKey} is already running.`);
+    checkServerReady(s.port, 15, 300).then((url) => {
+      updateServiceStatus(appKey, {
+        status: 'ready',
+        url,
+        message: `${s.script} is ready on port ${s.port}!`
+      });
+    }).catch(() => {});
     return;
   }
 

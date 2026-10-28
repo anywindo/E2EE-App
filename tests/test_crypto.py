@@ -69,5 +69,27 @@ class TestCrypto(unittest.TestCase):
         
         self.assertEqual(key_a_1, key_a_2)
 
+    def test_nist_sp_800_38d_input_validation(self):
+        priv_a, pub_a = crypto.generate_keypair()
+        priv_b, pub_b = crypto.generate_keypair()
+        key = crypto.derive_shared_key(priv_a, pub_b)
+        nonce, ciphertext, tag = crypto.encrypt(key, b"conformance test")
+
+        # Invalid IV/nonce length (must be 12 bytes / 96 bits per SP 800-38D Sec 5.2.1.1)
+        with self.assertRaises(ValueError):
+            crypto.decrypt(key, b"short_nonce", ciphertext, tag)
+
+        # Invalid tag length (must be 16 bytes / 128 bits per SP 800-38D Sec 5.2.1.2)
+        with self.assertRaises(ValueError):
+            crypto.decrypt(key, nonce, ciphertext, b"short_tag")
+
+        # Invalid AES key length (must be 32 bytes / 256 bits per FIPS 197)
+        with self.assertRaises(ValueError):
+            crypto.encrypt(b"invalid_16b_key!", b"test")
+
+        # Verify invocation counter tracks by hash(key) without storing raw key bytes (SP 800-38D Sec 8.3 & SP 800-56C Sec 8.4)
+        self.assertGreaterEqual(crypto.get_key_invocation_count(key), 1)
+        self.assertNotIn(key, crypto._KEY_INVOCATION_COUNTS)
+
 if __name__ == '__main__':
     unittest.main()

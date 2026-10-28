@@ -43,6 +43,8 @@ class TestProtocol(unittest.TestCase):
         priv, pub = crypto.generate_keypair()
         
         serialized = protocol.serialize_public_key(pub)
+        self.assertEqual(len(serialized), config.ECDH_PUBLIC_KEY_SIZE)
+        self.assertEqual(serialized[0], 0x04)
         deserialized_pub = protocol.deserialize_public_key(serialized)
         
         # Compare encoded points to check equality
@@ -50,6 +52,10 @@ class TestProtocol(unittest.TestCase):
             protocol.serialize_public_key(pub),
             protocol.serialize_public_key(deserialized_pub)
         )
+
+    def test_invalid_public_key_rejected(self):
+        with self.assertRaises(ValueError):
+            protocol.deserialize_public_key(b"\x04" + b"\x00" * 30)
 
 if __name__ == '__main__':
     unittest.main()

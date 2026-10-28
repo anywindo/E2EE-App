@@ -16,7 +16,10 @@ def main():
         sender.connect()
         logger.info(_("sender_connected"))
         sender.handshake()
-        logger.info("ECDH Handshake complete.")
+        logger.info(
+            f"ECDH+HKDF Handshake complete in {sender.handshake_time_ns / 1_000_000:.3f} ms "
+            f"({sender.handshake_time_ns} ns, isolated from per-message timing)."
+        )
         
         runner = BenchmarkRunner(sender)
         runner.run_experiment()

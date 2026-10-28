@@ -929,5 +929,14 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
 
 if __name__ == "__main__":
     import os
-    port = int(os.environ.get("GRADIO_SERVER_PORT", 7860))
+    import socket
+    env_port = os.environ.get("GRADIO_SERVER_PORT")
+    if env_port:
+        port = int(env_port)
+    else:
+        port = 7861
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", port)) == 0:
+                print(f"Notice: Port {port} is already in use (e.g., by the Electron app). Falling back to an available port...")
+                port = None
     app.launch(server_port=port, allowed_paths=[os.path.abspath("results")])

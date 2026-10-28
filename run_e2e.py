@@ -16,12 +16,12 @@ def main():
     
     config_msg = (
         "--- E2EE Benchmark Configuration ---\n"
-        "ECDH Curve: SECP256R1\n"
-        "AES Key Size: 256-bit\n"
-        "Nonce Size: 12 bytes\n"
-        "Tag Size: 128-bit\n"
+        "ECDH Curve: SECP256R1 (NIST P-256)\n"
+        "KDF Algorithm: HKDF-SHA256\n"
+        "AEAD Cipher: AES-256-GCM (256-bit key, 12B nonce, 128-bit tag)\n"
         "Message Sizes: 16 B, 64 B, 256 B, 1 KB, 4 KB, 16 KB, 64 KB, 256 KB, 1 MB\n"
-        f"Measured Repetitions per Size: {repetitions}\n"
+        f"Measured Repetitions per Size: {repetitions} (+ 5 warm-ups)\n"
+        "Standards: NIST FIPS 186-5/197, SP 800-56A/56C/38D, IETF RFC 5869/2544, ISO/IEC 25010:2023\n"
         "------------------------------------"
     )
     

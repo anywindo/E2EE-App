@@ -45,14 +45,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateSplashVisibility() {
     if (activeTab === 'app') {
       splashChat.classList.add('hidden');
-      if (servicesState.app.status === 'ready') {
+      if (servicesState.app.status === 'ready' || (viewApp && viewApp.src && viewApp.src !== 'about:blank')) {
         splashApp.classList.add('hidden');
       } else {
         splashApp.classList.remove('hidden');
       }
     } else {
       splashApp.classList.add('hidden');
-      if (servicesState.chat.status === 'ready') {
+      if (servicesState.chat.status === 'ready' || (viewChatAlice && viewChatAlice.src && viewChatAlice.src !== 'about:blank')) {
         splashChat.classList.add('hidden');
       } else {
         splashChat.classList.remove('hidden');
@@ -73,6 +73,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       viewApp.classList.add('active');
       containerChat.classList.remove('active');
+
+      const appUrl = servicesState.app.url || 'http://127.0.0.1:7860';
+      if (!viewApp.src || viewApp.src === 'about:blank') {
+        viewApp.src = appUrl;
+      }
     } else {
       btnAppChat.classList.add('active');
       btnAppChat.setAttribute('aria-selected', 'true');
@@ -81,6 +86,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       containerChat.classList.add('active');
       viewApp.classList.remove('active');
+
+      const chatUrl = servicesState.chat.url || 'http://127.0.0.1:7861';
+      const aliceUrl = `${chatUrl}/?user=Alice`;
+      const bobUrl = `${chatUrl}/?user=Bob`;
+
+      if (!viewChatAlice.src || viewChatAlice.src === 'about:blank' || !viewChatAlice.src.includes('user=Alice')) {
+        viewChatAlice.src = aliceUrl;
+      }
+      if (!viewChatBob.src || viewChatBob.src === 'about:blank' || !viewChatBob.src.includes('user=Bob')) {
+        viewChatBob.src = bobUrl;
+      }
     }
 
     updateHeaderStatusPill();
@@ -124,18 +140,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (data.status === 'ready' && data.url) {
       if (appKey === 'app') {
-        if (!viewApp.src || viewApp.src === 'about:blank' || viewApp.src !== data.url) {
-          viewApp.src = data.url;
+        const appUrl = data.url;
+        if (!viewApp.src || viewApp.src === 'about:blank') {
+          viewApp.src = appUrl;
+        } else {
+          try { viewApp.reload(); } catch (e) { viewApp.src = appUrl; }
         }
       } else if (appKey === 'chat') {
         const aliceUrl = `${data.url}/?user=Alice`;
         const bobUrl = `${data.url}/?user=Bob`;
 
-        if (!viewChatAlice.src || viewChatAlice.src === 'about:blank' || !viewChatAlice.src.includes('user=Alice')) {
+        if (!viewChatAlice.src || viewChatAlice.src === 'about:blank') {
           viewChatAlice.src = aliceUrl;
+        } else {
+          try { viewChatAlice.reload(); } catch (e) { viewChatAlice.src = aliceUrl; }
         }
-        if (!viewChatBob.src || viewChatBob.src === 'about:blank' || !viewChatBob.src.includes('user=Bob')) {
+
+        if (!viewChatBob.src || viewChatBob.src === 'about:blank') {
           viewChatBob.src = bobUrl;
+        } else {
+          try { viewChatBob.reload(); } catch (e) { viewChatBob.src = bobUrl; }
         }
       }
     }
@@ -146,26 +170,47 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Webview lifecycle listeners
   if (viewApp) {
     viewApp.addEventListener('dom-ready', () => {
-      if (activeTab === 'app') splashApp.classList.add('hidden');
+      splashApp.classList.add('hidden');
     });
   }
   if (viewChatAlice) {
     viewChatAlice.addEventListener('dom-ready', () => {
-      if (activeTab === 'chat') splashChat.classList.add('hidden');
+      splashChat.classList.add('hidden');
     });
   }
   if (viewChatBob) {
     viewChatBob.addEventListener('dom-ready', () => {
-      if (activeTab === 'chat') splashChat.classList.add('hidden');
+      splashChat.classList.add('hidden');
     });
   }
 
-  // Reload Individual Panes (if buttons present)
+  // Automatic retry on ERR_CONNECTION_REFUSED during backend boot
+  function attachFailRetry(wv, targetUrl) {
+    if (!wv) return;
+    wv.addEventListener('did-fail-load', (e) => {
+      if (e.errorCode === -102 || e.errorCode === -3) {
+        setTimeout(() => {
+          try {
+            if (wv.src === targetUrl) wv.reload();
+            else wv.src = targetUrl;
+          } catch (err) {
+            wv.src = targetUrl;
+          }
+        }, 1500);
+      }
+    });
+  }
+
+  attachFailRetry(viewApp, 'http://127.0.0.1:7860');
+  attachFailRetry(viewChatAlice, 'http://127.0.0.1:7861/?user=Alice');
+  attachFailRetry(viewChatBob, 'http://127.0.0.1:7861/?user=Bob');
+
+  // Reload Individual Panes
   if (btnReloadAlice) {
     btnReloadAlice.addEventListener('click', () => {
       if (viewChatAlice) {
-        const url = servicesState.chat.url ? `${servicesState.chat.url}/?user=Alice` : viewChatAlice.src;
-        viewChatAlice.src = url;
+        const url = `${servicesState.chat.url || 'http://127.0.0.1:7861'}/?user=Alice`;
+        try { viewChatAlice.reload(); } catch (e) { viewChatAlice.src = url; }
       }
     });
   }
@@ -173,8 +218,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnReloadBob) {
     btnReloadBob.addEventListener('click', () => {
       if (viewChatBob) {
-        const url = servicesState.chat.url ? `${servicesState.chat.url}/?user=Bob` : viewChatBob.src;
-        viewChatBob.src = url;
+        const url = `${servicesState.chat.url || 'http://127.0.0.1:7861'}/?user=Bob`;
+        try { viewChatBob.reload(); } catch (e) { viewChatBob.src = url; }
       }
     });
   }
@@ -187,11 +232,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnReloadView) {
     btnReloadView.addEventListener('click', () => {
       if (activeTab === 'app') {
-        if (viewApp) viewApp.reload();
+        const appUrl = servicesState.app.url || 'http://127.0.0.1:7860';
+        if (viewApp) {
+          viewApp.src = appUrl;
+          viewApp.reload();
+        }
       } else {
-        if (viewChatAlice) viewChatAlice.reload();
-        if (viewChatBob) viewChatBob.reload();
+        const chatUrl = servicesState.chat.url || 'http://127.0.0.1:7861';
+        if (viewChatAlice) {
+          viewChatAlice.src = `${chatUrl}/?user=Alice`;
+          viewChatAlice.reload();
+        }
+        if (viewChatBob) {
+          viewChatBob.src = `${chatUrl}/?user=Bob`;
+          viewChatBob.reload();
+        }
       }
+      updateSplashVisibility();
     });
   }
 
@@ -199,6 +256,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const splash = activeTab === 'app' ? splashApp : splashChat;
     splash.classList.remove('hidden');
     await window.electronAPI.restartBackend(activeTab);
+
+    // Rebind webviews once restart request returns
+    if (activeTab === 'app') {
+      if (viewApp) {
+        viewApp.src = servicesState.app.url || 'http://127.0.0.1:7860';
+        viewApp.reload();
+      }
+    } else {
+      const chatUrl = servicesState.chat.url || 'http://127.0.0.1:7861';
+      if (viewChatAlice) {
+        viewChatAlice.src = `${chatUrl}/?user=Alice`;
+        viewChatAlice.reload();
+      }
+      if (viewChatBob) {
+        viewChatBob.src = `${chatUrl}/?user=Bob`;
+        viewChatBob.reload();
+      }
+    }
   });
 
   if (btnOpenBrowser) {

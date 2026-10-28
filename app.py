@@ -552,5 +552,14 @@ For each size, the system executes 35 total runs (5 warm-up runs and 30 measured
     )
 
 if __name__ == "__main__":
-    port = int(os.environ.get("GRADIO_SERVER_PORT", 7860))
+    import socket
+    env_port = os.environ.get("GRADIO_SERVER_PORT")
+    if env_port:
+        port = int(env_port)
+    else:
+        port = 7860
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("127.0.0.1", port)) == 0:
+                print(f"Notice: Port {port} is already in use (e.g., by the Electron app). Falling back to an available port...")
+                port = None
     app.queue().launch(server_port=port)
