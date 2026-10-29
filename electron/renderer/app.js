@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const logEntries = [];
 
   const servicesState = {
-    app: { status: 'starting', url: 'http://127.0.0.1:7860', port: 7860 },
-    chat: { status: 'starting', url: 'http://127.0.0.1:7861', port: 7861 }
+    app: { status: 'starting', url: null, port: 7860 },
+    chat: { status: 'starting', url: null, port: 7861 }
   };
 
   function updateSplashVisibility() {
@@ -220,13 +220,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   function attachFailRetry(wv, targetUrl) {
     if (!wv) return;
     wv.addEventListener('did-fail-load', (e) => {
+      // Ignore initial aborts or empty urls
+      if (!wv.src || wv.src === 'about:blank') return;
       if (e.errorCode === -102 || e.errorCode === -3) {
         setTimeout(() => {
           try {
-            if (wv.src === targetUrl) wv.reload();
-            else wv.src = targetUrl;
+            if (wv.src && wv.src !== 'about:blank') wv.reload();
           } catch (err) {
-            wv.src = targetUrl;
+            // Ignore reload failure while shutting down or switching
           }
         }, 1500);
       }

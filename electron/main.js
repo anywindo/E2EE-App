@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, nativeImage } = require('electron');
 const path = require('path');
 const { spawn, execSync } = require('child_process');
 const http = require('http');
@@ -17,16 +17,16 @@ const services = {
     script: 'app.py',
     port: 7860,
     process: null,
-    status: { status: 'starting', app: 'app', port: 7860, url: 'http://127.0.0.1:7860', message: 'Starting app.py on port 7860...' },
-    url: 'http://127.0.0.1:7860'
+    status: { status: 'starting', app: 'app', port: 7860, url: null, message: 'Starting app.py on port 7860...' },
+    url: null
   },
   chat: {
     name: 'E2EE Chat Demo',
     script: 'chat_demo.py',
     port: 7861,
     process: null,
-    status: { status: 'starting', app: 'chat', port: 7861, url: 'http://127.0.0.1:7861', message: 'Starting chat_demo.py on port 7861...' },
-    url: 'http://127.0.0.1:7861'
+    status: { status: 'starting', app: 'chat', port: 7861, url: null, message: 'Starting chat_demo.py on port 7861...' },
+    url: null
   }
 };
 
@@ -120,7 +120,10 @@ function updateServiceStatus(appKey, statusData) {
   const s = services[appKey];
   if (!s) return;
   s.status = { ...s.status, ...statusData, app: appKey, port: s.port };
-  console.log(`[Tugas Akhir Status ${appKey.toUpperCase()}] ${statusData.status.toUpperCase()}: ${statusData.message || ''}`);
+  if (statusData.url) {
+    s.url = statusData.url;
+  }
+  console.log(`[E2EE Suite Status ${appKey.toUpperCase()}] ${statusData.status.toUpperCase()}: ${statusData.message || ''}`);
   sendToWindow('backend-status', s.status);
 }
 
@@ -319,13 +322,15 @@ function getServicesSummary() {
 
 function createWindow() {
   const isMac = process.platform === 'darwin';
+  const iconPath = path.join(projectRoot, 'assets', isMac ? 'icon.icns' : 'icon.ico');
 
   mainWindow = new BrowserWindow({
     width: 1420,
     height: 940,
     minWidth: 1040,
     minHeight: 700,
-    title: 'Tugas Akhir',
+    title: 'E2EE Suite',
+    icon: fs.existsSync(iconPath) ? iconPath : path.join(projectRoot, 'assets', 'appIcon.png'),
     titleBarStyle: isMac ? 'hiddenInset' : 'default',
     trafficLightPosition: isMac ? { x: 18, y: 17 } : undefined,
     vibrancy: isMac ? 'under-window' : undefined,
@@ -559,7 +564,33 @@ app.on('web-contents-created', (event, contents) => {
   });
 });
 
-app.whenReady().then(createWindow);
+app.setName('E2EE Suite');
+
+function setDockIcon() {
+  if (process.platform === 'darwin' && app.dock) {
+    const pngIconPath = path.join(projectRoot, 'assets', 'appIcon.png');
+    const dockIconPath = path.join(projectRoot, 'assets', 'icon.icns');
+    try {
+      if (fs.existsSync(pngIconPath)) {
+        const image = nativeImage.createFromPath(pngIconPath);
+        if (!image.isEmpty()) {
+          app.dock.setIcon(image);
+          return;
+        }
+      }
+      if (fs.existsSync(dockIconPath)) {
+        app.dock.setIcon(dockIconPath);
+      }
+    } catch (err) {
+      console.error('[E2EE Suite] Failed to set dock icon:', err);
+    }
+  }
+}
+
+app.whenReady().then(() => {
+  setDockIcon();
+  createWindow();
+});
 
 // Handle CLI termination signals
 const handleExit = async () => {

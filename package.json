@@ -1,5 +1,5 @@
 {
-  "name": "tugas-akhir-electron",
+  "name": "e2ee-suite",
   "version": "1.0.1",
   "description": "This repository contains the Python implementation of an experimental end-to-end encrypted (E2EE) one-to-one text messaging system. It serves as a measurement instrument to analyze the effect of message size on E2EE performance, using ECDH for key exchange and AES-GCM for message encryption.",
   "main": "electron/main.js",
@@ -15,8 +15,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "build": {
-    "appId": "com.anywindo.appta",
-    "productName": "E2EE Messaging Suite",
+    "appId": "com.anywindo.e2eesuite",
+    "productName": "E2EE Suite",
     "directories": {
       "output": "dist"
     },
@@ -44,6 +44,7 @@
     ],
     "compression": "maximum",
     "mac": {
+      "icon": "assets/icon.icns",
       "category": "public.app-category.developer-tools",
       "target": [
         "dmg",
@@ -56,6 +57,7 @@
       "format": "ULFO"
     },
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -66,6 +68,7 @@
       "perMachine": false
     },
     "linux": {
+      "icon": "assets/appIcon.png",
       "target": [
         "AppImage",
         "deb"
