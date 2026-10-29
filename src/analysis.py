@@ -10,9 +10,23 @@ Conforms to:
 - IETF RFC 2544 Section 26.2 (mean across >= 20 trials per size) and Section 4 (variance/outlier handling).
 """
 
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
+import sys
+
+# Ensure persistent Matplotlib cache directory to avoid rebuilding the font cache on every app launch
+if "MPLCONFIGDIR" not in os.environ:
+    if sys.platform == "win32":
+        base_cache = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+        mpl_dir = os.path.join(base_cache, "E2EESuite", "matplotlib")
+    else:
+        mpl_dir = os.path.expanduser("~/.cache/e2ee_suite_matplotlib")
+    os.makedirs(mpl_dir, exist_ok=True)
+    os.environ["MPLCONFIGDIR"] = mpl_dir
+
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import argparse
 
 def load_results(csv_path):

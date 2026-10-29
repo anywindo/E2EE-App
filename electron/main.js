@@ -3,6 +3,7 @@ const path = require('path');
 const { spawn, execSync } = require('child_process');
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 
 let mainWindow = null;
 let activeApp = 'app'; // 'app' or 'chat'
@@ -177,11 +178,17 @@ function startService(appKey) {
     message: `Launching ${s.script} on port ${s.port}...`
   });
 
+  const userCacheDir = process.platform === 'win32'
+    ? path.join(process.env.LOCALAPPDATA || os.homedir(), 'E2EESuite', 'matplotlib')
+    : path.join(os.homedir(), '.cache', 'e2ee_suite_matplotlib');
+  fs.mkdirSync(userCacheDir, { recursive: true });
+
   const env = {
     ...process.env,
     PYTHONUNBUFFERED: '1',
     GRADIO_SERVER_PORT: s.port.toString(),
-    GRADIO_SERVER_NAME: '127.0.0.1'
+    GRADIO_SERVER_NAME: '127.0.0.1',
+    MPLCONFIGDIR: userCacheDir
   };
 
   try {
