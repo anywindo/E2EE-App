@@ -73,7 +73,7 @@
   <main class="app-viewport">
     <div class="view-stage">
       <!-- 1. Benchmark & Analysis View -->
-      <webview id="view-app" class="stage-view active" src="http://127.0.0.1:7860" allowpopups role="tabpanel"
+      <webview id="view-app" class="stage-view active" allowpopups role="tabpanel"
         aria-labelledby="btn-app-benchmark"></webview>
 
       <!-- 2. Dual Side-by-Side E2EE Chat View -->
@@ -97,8 +97,7 @@
               </svg>
             </button>
           </header>
-          <webview id="view-chat-alice" partition="alice" class="peer-webview"
-            src="http://127.0.0.1:7861/?user=Alice" allowpopups></webview>
+          <webview id="view-chat-alice" partition="alice" class="peer-webview" allowpopups></webview>
         </section>
 
         <!-- Divider -->
@@ -124,8 +123,7 @@
               </svg>
             </button>
           </header>
-          <webview id="view-chat-bob" partition="bob" class="peer-webview" src="http://127.0.0.1:7861/?user=Bob"
-            allowpopups></webview>
+          <webview id="view-chat-bob" partition="bob" class="peer-webview" allowpopups></webview>
         </section>
       </div>
 

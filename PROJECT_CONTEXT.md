@@ -3,7 +3,7 @@
 > **Target Audience:** Large Language Models (LLMs), AI Agents, and Technical Architects.  
 > **Document Purpose:** Definitive, code-grounded, single source of truth for the APPTA codebase. This document enables any subsequent LLM to understand the architecture, cryptographic pipelines, execution workflows, database schemas, IPC interfaces, testing guarantees, and known constraints without rescanning the entire repository.  
 > **Author & Context:** Developed for the Undergraduate Thesis (*Tugas Akhir*) by Arwindo Sendy Pratama (`anywindo`, NIM `230712555@students.uajy.ac.id`) at Universitas Atma Jaya Yogyakarta (UAJY).  
-> **Repository:** `anywindo/APPTA` | **Current Tag/Version:** `v1.0.0` | **License:** ISC.
+> **Repository:** `anywindo/APPTA` | **Current Tag/Version:** `v1.0.1` | **License:** ISC.
 
 ---
 

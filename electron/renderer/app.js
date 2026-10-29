@@ -45,14 +45,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateSplashVisibility() {
     if (activeTab === 'app') {
       splashChat.classList.add('hidden');
-      if (servicesState.app.status === 'ready' || (viewApp && viewApp.src && viewApp.src !== 'about:blank')) {
+      if (servicesState.app.status === 'ready' && viewApp && viewApp.src && viewApp.src !== 'about:blank') {
         splashApp.classList.add('hidden');
       } else {
         splashApp.classList.remove('hidden');
       }
     } else {
       splashApp.classList.add('hidden');
-      if (servicesState.chat.status === 'ready' || (viewChatAlice && viewChatAlice.src && viewChatAlice.src !== 'about:blank')) {
+      if (servicesState.chat.status === 'ready' && viewChatAlice && viewChatAlice.src && viewChatAlice.src !== 'about:blank') {
         splashChat.classList.add('hidden');
       } else {
         splashChat.classList.remove('hidden');
@@ -74,9 +74,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       viewApp.classList.add('active');
       containerChat.classList.remove('active');
 
-      const appUrl = servicesState.app.url || 'http://127.0.0.1:7860';
-      if (!viewApp.src || viewApp.src === 'about:blank') {
-        viewApp.src = appUrl;
+      if (servicesState.app.status === 'ready') {
+        const appUrl = servicesState.app.url || 'http://127.0.0.1:7860';
+        if (!viewApp.src || viewApp.src === 'about:blank') {
+          viewApp.src = appUrl;
+        }
       }
     } else {
       btnAppChat.classList.add('active');
@@ -87,15 +89,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       containerChat.classList.add('active');
       viewApp.classList.remove('active');
 
-      const chatUrl = servicesState.chat.url || 'http://127.0.0.1:7861';
-      const aliceUrl = `${chatUrl}/?user=Alice`;
-      const bobUrl = `${chatUrl}/?user=Bob`;
+      if (servicesState.chat.status === 'ready') {
+        const chatUrl = servicesState.chat.url || 'http://127.0.0.1:7861';
+        const aliceUrl = `${chatUrl}/?user=Alice`;
+        const bobUrl = `${chatUrl}/?user=Bob`;
 
-      if (!viewChatAlice.src || viewChatAlice.src === 'about:blank' || !viewChatAlice.src.includes('user=Alice')) {
-        viewChatAlice.src = aliceUrl;
-      }
-      if (!viewChatBob.src || viewChatBob.src === 'about:blank' || !viewChatBob.src.includes('user=Bob')) {
-        viewChatBob.src = bobUrl;
+        if (!viewChatAlice.src || viewChatAlice.src === 'about:blank' || !viewChatAlice.src.includes('user=Alice')) {
+          viewChatAlice.src = aliceUrl;
+        }
+        if (!viewChatBob.src || viewChatBob.src === 'about:blank' || !viewChatBob.src.includes('user=Bob')) {
+          viewChatBob.src = bobUrl;
+        }
       }
     }
 

@@ -1,6 +1,6 @@
 {
   "name": "tugas-akhir-electron",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This repository contains the Python implementation of an experimental end-to-end encrypted (E2EE) one-to-one text messaging system. It serves as a measurement instrument to analyze the effect of message size on E2EE performance, using ECDH for key exchange and AES-GCM for message encryption.",
   "main": "electron/main.js",
   "scripts": {
@@ -49,7 +49,8 @@
         "dmg",
         "zip"
       ],
-      "hardenedRuntime": false
+      "hardenedRuntime": false,
+      "identity": null
     },
     "dmg": {
       "format": "ULFO"
