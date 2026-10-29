@@ -151,49 +151,74 @@ def filter_terminal_output(raw_log, query="", case_sensitive=False, show_warmup=
     return header + "\n".join(matched)
 
 def run_experiment(repetitions, translate_headers, x1, y1, x2, y2, x3, y3, x4, y4, search_query="", case_sensitive=False, show_warmup=False):
-    # Set the environment variable
-    env = os.environ.copy()
-    env["EXPERIMENT_REPETITIONS"] = str(int(repetitions))
-    
-    # Run the experiment as a subprocess
-    process = subprocess.Popen(
-        [sys.executable, "run_e2e.py"],
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1 # Line buffered
-    )
-    
+    import run_e2e
+    import queue
+    import io
+
     log_output = ""
-    for line in iter(process.stdout.readline, ''):
-        log_output += line
-        filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
-        # Yield partial updates for the live log, and gr.update() to keep other components unchanged
-        yield (
-            log_output,
-            gr.update(value=filtered_output, autoscroll=True), 
-            gr.update(interactive=False), # keep button disabled
-            gr.update(), gr.update(), gr.update(),
-            gr.update(), gr.update(), gr.update(), gr.update(), 
-            gr.update(), gr.update(), gr.update()
-        )
-    
-    process.stdout.close()
-    return_code = process.wait()
-    
-    if return_code != 0:
-        log_output += f"\n\nExperiment failed with exit code {return_code}."
-        filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
-        yield (
-            log_output,
-            gr.update(value=filtered_output, autoscroll=False), 
-            gr.update(interactive=True), # re-enable button
-            gr.update(), gr.update(), gr.update(),
-            gr.update(), gr.update(), gr.update(), gr.update(), 
-            gr.update(), gr.update(), gr.update()
-        )
-        return
+    log_q = queue.Queue()
+
+    class LogPipe(io.TextIOBase):
+        def write(self, s):
+            if s:
+                log_q.put(s)
+            return len(s)
+
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+
+    def runner_target():
+        pipe = LogPipe()
+        sys.stdout = pipe
+        sys.stderr = pipe
+        try:
+            run_e2e.run_benchmark_pipeline(repetitions=repetitions)
+            log_q.put(None)  # Success sentinel
+        except Exception as ex:
+            log_q.put(ex)    # Failure sentinel
+        finally:
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+
+    worker = threading.Thread(target=runner_target, daemon=True)
+    worker.start()
+
+    while True:
+        try:
+            chunk = log_q.get(timeout=0.1)
+        except queue.Empty:
+            if not worker.is_alive():
+                break
+            continue
+
+        if chunk is None:
+            # Succeeded
+            break
+        elif isinstance(chunk, Exception):
+            log_output += f"\n\nExperiment failed with exception: {chunk}"
+            filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
+            yield (
+                log_output,
+                gr.update(value=filtered_output, autoscroll=False), 
+                gr.update(interactive=True), # re-enable button
+                gr.update(), gr.update(), gr.update(),
+                gr.update(), gr.update(), gr.update(), gr.update(), 
+                gr.update(), gr.update(), gr.update()
+            )
+            return
+        else:
+            log_output += chunk
+            filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
+            yield (
+                log_output,
+                gr.update(value=filtered_output, autoscroll=True), 
+                gr.update(interactive=False), # keep button disabled
+                gr.update(), gr.update(), gr.update(),
+                gr.update(), gr.update(), gr.update(), gr.update(), 
+                gr.update(), gr.update(), gr.update()
+            )
+
+    worker.join()
 
     log_output += "\n\nExperiment completed successfully! Loading results..."
     
@@ -310,7 +335,7 @@ textarea, pre, code, .prose, table, .table-wrap, [data-testid="textbox"] textare
 }
 """
 
-with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True, css=SELECTABLE_CSS) as app:
+with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True) as app:
     gr.Markdown("# E2EE Performance Benchmark")
     gr.Markdown("GUI for thesis research: *Analisis Pengaruh Ukuran Pesan terhadap Kinerja End-to-End Encryption Menggunakan ECDH dan AES-GCM pada Komunikasi Pesan.*")
     
@@ -656,4 +681,4 @@ if __name__ == "__main__":
             if s.connect_ex(("127.0.0.1", port)) == 0:
                 print(f"Notice: Port {port} is already in use (e.g., by the Electron app). Falling back to an available port...")
                 port = None
-    app.queue().launch(server_port=port)
+    app.queue().launch(server_port=port, css=SELECTABLE_CSS)

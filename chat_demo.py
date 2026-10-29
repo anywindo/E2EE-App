@@ -624,14 +624,20 @@ def update_pt_plots(df, plot_type, trendline, log_x, log_y):
     return enc_fig, dec_fig, lat_fig, thr_fig
 
 def run_planned_testing(search_query="", case_sensitive=False, show_warmup=False):
-    import subprocess
     import os
+    import io
+    import run_e2e
+    import contextlib
+
+    output_buf = io.StringIO()
     try:
-        result = subprocess.run([sys.executable if "sys" in globals() else "python", "run_e2e.py"], capture_output=True, text=True, timeout=120)
-        output = result.stdout
-        if result.stderr:
-            output += "\nSTDERR:\n" + result.stderr
-            
+        with contextlib.redirect_stdout(output_buf), contextlib.redirect_stderr(output_buf):
+            run_e2e.run_benchmark_pipeline()
+        output = output_buf.getvalue()
+    except Exception as exc:
+        output = output_buf.getvalue() + f"\n\nBenchmark execution error: {exc}"
+
+    try:
         import pandas as pd
         import glob
         import plotly.express as px
@@ -680,7 +686,7 @@ textarea, pre, code, .prose, table, .table-wrap, [data-testid="textbox"] textare
 }
 """
 
-with gr.Blocks(title="E2EE Chat Demo", css=SELECTABLE_CSS) as app:
+with gr.Blocks(title="E2EE Chat Demo") as app:
     gr.Markdown("# E2EE Interactive  Chat")
     gr.Markdown(
         ""
@@ -1093,4 +1099,4 @@ if __name__ == "__main__":
             if s.connect_ex(("127.0.0.1", port)) == 0:
                 print(f"Notice: Port {port} is already in use (e.g., by the Electron app). Falling back to an available port...")
                 port = None
-    app.launch(server_port=port, allowed_paths=[os.path.abspath("results")])
+    app.launch(server_port=port, allowed_paths=[os.path.abspath("results")], css=SELECTABLE_CSS)
