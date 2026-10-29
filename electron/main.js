@@ -379,6 +379,20 @@ function setupMenu() {
       ]
     }] : []),
     {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { role: 'pasteAndMatchStyle' },
+        { role: 'delete' },
+        { role: 'selectAll' }
+      ]
+    },
+    {
       label: 'Switch Application',
       submenu: [
         {
@@ -507,6 +521,42 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Enable right-click context menu (Copy, Cut, Paste, Select All) for all webContents (windows and webviews)
+app.on('web-contents-created', (event, contents) => {
+  contents.on('context-menu', (e, params) => {
+    const menuTemplate = [];
+
+    if (params.selectionText && params.selectionText.trim().length > 0) {
+      menuTemplate.push(
+        { role: 'copy' },
+        { type: 'separator' },
+        { role: 'selectAll' }
+      );
+    } else if (params.isEditable) {
+      menuTemplate.push(
+        { role: 'undo' },
+        { role: 'redo' },
+        { type: 'separator' },
+        { role: 'cut' },
+        { role: 'copy' },
+        { role: 'paste' },
+        { type: 'separator' },
+        { role: 'selectAll' }
+      );
+    } else {
+      menuTemplate.push(
+        { role: 'copy' },
+        { role: 'selectAll' }
+      );
+    }
+
+    if (menuTemplate.length > 0) {
+      const contextMenu = Menu.buildFromTemplate(menuTemplate);
+      contextMenu.popup();
+    }
+  });
 });
 
 app.whenReady().then(createWindow);

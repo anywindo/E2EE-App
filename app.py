@@ -116,7 +116,41 @@ def format_df_headers(df, translate=True):
     df_copy.columns = new_cols
     return df_copy
 
-def run_experiment(repetitions, translate_headers, x1, y1, x2, y2, x3, y3, x4, y4):
+def filter_terminal_output(raw_log, query="", case_sensitive=False, show_warmup=False):
+    """Filters terminal output lines by warm-up visibility and search query while preserving line numbers."""
+    if not raw_log:
+        return ""
+
+    raw_lines = raw_log.splitlines()
+    visible_lines = []
+    in_warmup_block = False
+
+    for line in raw_lines:
+        if "[WARM-UP PHASE]" in line or "[FASE WARM-UP]" in line:
+            in_warmup_block = True
+        elif "[MEASURED PHASE]" in line or "[FASE TERUKUR]" in line or "MESSAGE SIZE:" in line or "UKURAN PESAN:" in line or "========== " in line:
+            in_warmup_block = False
+
+        if not show_warmup and (in_warmup_block or "Warm-up" in line or "Pemanasan" in line or "[WARM-UP" in line):
+            continue
+        visible_lines.append(line)
+
+    if not query or not query.strip():
+        return "\n".join(visible_lines)
+
+    needle = query if case_sensitive else query.lower()
+    matched = []
+    for idx, line in enumerate(visible_lines, start=1):
+        haystack = line if case_sensitive else line.lower()
+        if needle in haystack:
+            matched.append(f"[L{idx}] {line}")
+
+    header = f"--- Showing {len(matched)} of {len(visible_lines)} lines matching '{query}' ---\n"
+    if not matched:
+        return header + "(No matching lines)"
+    return header + "\n".join(matched)
+
+def run_experiment(repetitions, translate_headers, x1, y1, x2, y2, x3, y3, x4, y4, search_query="", case_sensitive=False, show_warmup=False):
     # Set the environment variable
     env = os.environ.copy()
     env["EXPERIMENT_REPETITIONS"] = str(int(repetitions))
@@ -134,9 +168,11 @@ def run_experiment(repetitions, translate_headers, x1, y1, x2, y2, x3, y3, x4, y
     log_output = ""
     for line in iter(process.stdout.readline, ''):
         log_output += line
+        filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
         # Yield partial updates for the live log, and gr.update() to keep other components unchanged
         yield (
-            gr.update(value=log_output, autoscroll=True), 
+            log_output,
+            gr.update(value=filtered_output, autoscroll=True), 
             gr.update(interactive=False), # keep button disabled
             gr.update(), gr.update(), gr.update(),
             gr.update(), gr.update(), gr.update(), gr.update(), 
@@ -148,8 +184,10 @@ def run_experiment(repetitions, translate_headers, x1, y1, x2, y2, x3, y3, x4, y
     
     if return_code != 0:
         log_output += f"\n\nExperiment failed with exit code {return_code}."
+        filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
         yield (
-            gr.update(value=log_output, autoscroll=False), 
+            log_output,
+            gr.update(value=filtered_output, autoscroll=False), 
             gr.update(interactive=True), # re-enable button
             gr.update(), gr.update(), gr.update(),
             gr.update(), gr.update(), gr.update(), gr.update(), 
@@ -166,8 +204,10 @@ def run_experiment(repetitions, translate_headers, x1, y1, x2, y2, x3, y3, x4, y
         latest_folder = max(run_folders, key=os.path.getmtime)
     except Exception as e:
         log_output += f"\nError locating results: {e}"
+        filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
         yield (
-            gr.update(value=log_output, autoscroll=False), 
+            log_output,
+            gr.update(value=filtered_output, autoscroll=False), 
             gr.update(interactive=True), 
             gr.update(), gr.update(), gr.update(),
             gr.update(), gr.update(), gr.update(), gr.update(), 
@@ -198,10 +238,12 @@ def run_experiment(repetitions, translate_headers, x1, y1, x2, y2, x3, y3, x4, y
         env_df = pd.DataFrame(columns=["Property", "Value"])
 
     fig_enc, fig_dec, fig_lat, fig_thr = update_all_plots(summary_df, x1, y1, x2, y2, x3, y3, x4, y4)
+    filtered_output = filter_terminal_output(log_output, search_query, case_sensitive, show_warmup)
     
     # Yield final successful state
     yield (
-        gr.update(value=log_output, autoscroll=False), 
+        log_output,
+        gr.update(value=filtered_output, autoscroll=False), 
         gr.update(interactive=True), 
         summary_df, format_df_headers(summary_df, translate_headers), summary_csv, 
         fig_enc, fig_dec, fig_lat, fig_thr, 
@@ -260,7 +302,15 @@ def load_results(run_folder, translate_headers, x1, y1, x2, y2, x3, y3, x4, y4):
         format_df_headers(results_df, translate_headers), results_csv if os.path.exists(results_csv) else None, env_df
     )
 
-with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True) as app:
+SELECTABLE_CSS = """
+textarea, pre, code, .prose, table, .table-wrap, [data-testid="textbox"] textarea, .output-markdown {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+}
+"""
+
+with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True, css=SELECTABLE_CSS) as app:
     gr.Markdown("# E2EE Performance Benchmark")
     gr.Markdown("GUI for thesis research: *Analisis Pengaruh Ukuran Pesan terhadap Kinerja End-to-End Encryption Menggunakan ECDH dan AES-GCM pada Komunikasi Pesan.*")
     
@@ -275,6 +325,29 @@ with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True) as app:
                     reps_slider = gr.Slider(minimum=1, maximum=100, value=30, step=1, label=_("reps_slider"))
                 run_btn = gr.Button(_("run_btn"), variant="primary")
             
+            raw_log_state = gr.State("")
+            with gr.Row(equal_height=True):
+                log_search_box = gr.Textbox(
+                    label=_("search_terminal"),
+                    placeholder=_("search_terminal_placeholder"),
+                    scale=4,
+                    container=True
+                )
+                log_show_warmup = gr.Checkbox(
+                    label=_("show_warmup_logs"),
+                    value=False,
+                    scale=1
+                )
+                log_case_sensitive = gr.Checkbox(
+                    label=_("case_sensitive"),
+                    value=False,
+                    scale=1
+                )
+                log_clear_search_btn = gr.Button(
+                    _("clear_search"),
+                    variant="secondary",
+                    scale=1
+                )
             log_box = gr.Textbox(label=_("terminal_output"), lines=20, max_lines=20, interactive=False, autoscroll=True)
             
         with gr.Tab(_("tab_aggregate")):
@@ -395,13 +468,34 @@ For each size, the system executes 35 total runs (5 warm-up runs and 30 measured
         queue=False
     ).then(
         fn=run_experiment,
-        inputs=[reps_slider, translate_headers_cb, x1, y1, x2, y2, x3, y3, x4, y4],
+        inputs=[reps_slider, translate_headers_cb, x1, y1, x2, y2, x3, y3, x4, y4, log_search_box, log_case_sensitive, log_show_warmup],
         outputs=[
-            log_box, run_btn, 
+            raw_log_state, log_box, run_btn, 
             summary_state, summary_table, summary_file, 
             img_enc, img_dec, img_lat, img_thr, 
             results_table, results_file, env_display
         ]
+    )
+
+    log_search_box.change(
+        fn=filter_terminal_output,
+        inputs=[raw_log_state, log_search_box, log_case_sensitive, log_show_warmup],
+        outputs=log_box
+    )
+    log_case_sensitive.change(
+        fn=filter_terminal_output,
+        inputs=[raw_log_state, log_search_box, log_case_sensitive, log_show_warmup],
+        outputs=log_box
+    )
+    log_show_warmup.change(
+        fn=filter_terminal_output,
+        inputs=[raw_log_state, log_search_box, log_case_sensitive, log_show_warmup],
+        outputs=log_box
+    )
+    log_clear_search_btn.click(
+        fn=lambda raw_log, show_warmup: ("", filter_terminal_output(raw_log, "", False, show_warmup)),
+        inputs=[raw_log_state, log_show_warmup],
+        outputs=[log_search_box, log_box]
     )
     
     x1.change(fn=plot_plotly, inputs=[summary_state, x1, y1], outputs=img_enc)

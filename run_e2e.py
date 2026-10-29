@@ -15,18 +15,21 @@ def main():
     repetitions = os.environ.get("EXPERIMENT_REPETITIONS", "30")
     
     config_msg = (
-        "--- E2EE Benchmark Configuration ---\n"
-        "ECDH Curve: SECP256R1 (NIST P-256)\n"
-        "KDF Algorithm: HKDF-SHA256\n"
-        "AEAD Cipher: AES-256-GCM (256-bit key, 12B nonce, 128-bit tag)\n"
-        "Message Sizes: 16 B, 64 B, 256 B, 1 KB, 4 KB, 16 KB, 64 KB, 256 KB, 1 MB\n"
-        f"Measured Repetitions per Size: {repetitions} (+ 5 warm-ups)\n"
-        "Standards: NIST FIPS 186-5/197, SP 800-56A/56C/38D, IETF RFC 5869/2544, ISO/IEC 25010:2023\n"
-        "------------------------------------"
+        "================================================================================\n"
+        "                         E2EE BENCHMARK CONFIGURATION                           \n"
+        "================================================================================\n"
+        "  ECDH Curve        : SECP256R1 (NIST P-256)\n"
+        "  KDF Algorithm     : HKDF-SHA256\n"
+        "  AEAD Cipher       : AES-256-GCM (256-bit key, 12B nonce, 128-bit tag)\n"
+        "  Message Sizes     : 16 B, 64 B, 256 B, 1 KB, 4 KB, 16 KB, 64 KB, 256 KB, 1 MB\n"
+        f"  Repetitions/Size  : {repetitions} measured (+ 5 warm-ups discarded)\n"
+        "  Standards         : NIST FIPS 186-5/197, SP 800-56A/56C/38D,\n"
+        "                      IETF RFC 5869/2544, ISO/IEC 25010:2023\n"
+        "================================================================================"
     )
     
     logger.info("Starting E2E Validation Test...")
-    logger.info("\n" + config_msg)
+    print(config_msg, flush=True)
     tz_utc_7 = datetime.timezone(datetime.timedelta(hours=7))
     now = datetime.datetime.now(tz_utc_7).strftime('%Y%m%d_%H%M%S')
     run_folder = os.path.join("results", f"run_{now}")
@@ -67,10 +70,10 @@ def main():
     assert os.path.exists(os.path.join(run_folder, "summary.csv")), "Summary CSV missing"
     
     total_time = time.time() - start_time
-    logger.info("E2E Test completed successfully!")
-    logger.info("\n--- Test Finished ---")
-    logger.info(f"Total time taken: {total_time:.2f} seconds")
-    logger.info("\n" + config_msg)
+    print("", flush=True)
+    logger.info("================================================================================")
+    logger.info(f"E2E Benchmark Completed Successfully in {total_time:.2f} seconds! (Output: {run_folder})")
+    logger.info("================================================================================")
 
 if __name__ == "__main__":
     main()

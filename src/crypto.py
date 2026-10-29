@@ -40,7 +40,6 @@ def generate_keypair():
     curve = _get_curve()
     private_key = ec.generate_private_key(curve)
     public_key = private_key.public_key()
-    logger.debug("Generated new SECP256R1 (NIST P-256) ephemeral ECDH keypair.")
     return private_key, public_key
 
 def derive_shared_key(private_key, peer_public_key, salt=None, info=None):
@@ -81,7 +80,6 @@ def derive_shared_key(private_key, peer_public_key, salt=None, info=None):
         # SP 800-56C Rev. 2 Section 8.4: Clear local reference to raw shared secret Z
         del shared_secret
 
-    logger.debug(f"Derived {config.AES_KEY_SIZE}-bit AES key via HKDF-SHA256 from shared secret.")
     return derived_key
 
 def get_key_invocation_count(key: bytes) -> int:
@@ -120,10 +118,6 @@ def encrypt(key, plaintext_bytes, associated_data=None):
     ciphertext = ct_with_tag[:-tag_size_bytes]
     tag = ct_with_tag[-tag_size_bytes:]
 
-    logger.debug(
-        f"AES-256-GCM Encryption: {len(plaintext_bytes)}B plaintext -> "
-        f"{len(ciphertext)}B ciphertext + {len(tag)}B tag (nonce: {nonce.hex()})."
-    )
     return nonce, ciphertext, tag
 
 def decrypt(key, nonce, ciphertext, tag, associated_data=None):
@@ -150,7 +144,6 @@ def decrypt(key, nonce, ciphertext, tag, associated_data=None):
     ct_with_tag = ciphertext + tag
     try:
         plaintext = aesgcm.decrypt(nonce, ct_with_tag, associated_data)
-        logger.debug(f"AES-256-GCM Decryption SUCCESS: {len(ciphertext)}B ciphertext -> {len(plaintext)}B plaintext.")
         return plaintext
     except Exception as e:
         logger.error(f"AES-256-GCM Decryption FAILED: {str(e)}")

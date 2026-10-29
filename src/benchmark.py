@@ -29,6 +29,33 @@ def generate_plaintext(size_bytes):
     """Generates cryptographically random test payload of the specified byte length."""
     return os.urandom(size_bytes)
 
+def format_size_short(size_bytes: int) -> str:
+    """Formats payload size into compact string (e.g. 64 KB, 1 MB, 16 B)."""
+    if size_bytes >= 1024 * 1024:
+        return f"{size_bytes // (1024 * 1024)} MB"
+    elif size_bytes >= 1024:
+        return f"{size_bytes // 1024} KB"
+    else:
+        return f"{size_bytes} B"
+
+def format_size_label(size_bytes: int) -> str:
+    """Formats payload size into clean human-readable representation."""
+    if size_bytes >= 1024 * 1024:
+        return f"{size_bytes // (1024 * 1024)} MB ({size_bytes:,} B)"
+    elif size_bytes >= 1024:
+        return f"{size_bytes // 1024} KB ({size_bytes:,} B)"
+    else:
+        return f"{size_bytes} B"
+
+def format_throughput_label(bytes_per_sec: float) -> str:
+    """Formats throughput into human-friendly scaled rate (MB/s or KB/s)."""
+    if bytes_per_sec >= 1024 * 1024:
+        return f"{bytes_per_sec / (1024 * 1024):>6.2f} MB/s"
+    elif bytes_per_sec >= 1024:
+        return f"{bytes_per_sec / 1024:>6.2f} KB/s"
+    else:
+        return f"{bytes_per_sec:>6.2f} B/s"
+
 class BenchmarkRunner:
     def __init__(self, sender, data_writer=None):
         self.sender = sender
@@ -50,26 +77,53 @@ class BenchmarkRunner:
         
         experiment_start = datetime.datetime.now()
         
+        plan_labels = [format_size_short(s) for s in plan]
         logger.info(_("starting_exp", sizes=len(plan), runs=config.MEASURED_RUNS, warmups=config.WARMUP_RUNS))
-        logger.info(_("exec_order", plan=plan))
+        logger.info(_("exec_order", plan=", ".join(plan_labels)))
         
-        for size in plan:
-            logger.info(_("msg_size", size=size))
+        for size_idx, size in enumerate(plan, start=1):
+            print("", flush=True)
+            size_lbl = format_size_label(size)
+            logger.info(_("msg_size", size_label=size_lbl, idx=size_idx, total_sizes=len(plan)))
             # Generate random plaintext for this size run (RFC 2544 Section 9)
             plaintext = generate_plaintext(size)
             
             # Warm-up runs (Decision 13: discarded prior to CSV recording)
+            logger.info(_("warmup_phase_start", warmups=config.WARMUP_RUNS))
             for w in range(config.WARMUP_RUNS):
-                self._execute_single_run(plaintext, record=False)
+                w_ok, w_enc_ns, w_dec_ns, w_lat_ns, w_thr = self._execute_single_run(plaintext, record=False)
+                logger.info(
+                    _(
+                        "warmup_trial_log",
+                        w=w + 1,
+                        warmups=config.WARMUP_RUNS,
+                        status="OK" if w_ok else "FAIL",
+                        enc_ms=w_enc_ns / 1_000_000.0,
+                        dec_ms=w_dec_ns / 1_000_000.0,
+                        lat_ms=w_lat_ns / 1_000_000.0,
+                    )
+                )
                 
             # Measured runs (Decision 7 & RFC 2544 Section 26.2: repeated trials per payload size)
+            logger.info(_("measured_phase_start", runs=config.MEASURED_RUNS))
             for m in range(config.MEASURED_RUNS):
                 current_run += 1
-                success = self._execute_single_run(plaintext, record=True)
-                
-                # Progress
-                if m % 10 == 0 or m == config.MEASURED_RUNS - 1:
-                    logger.debug(f"  [{current_run}/{total_runs}] Run {m+1}/{config.MEASURED_RUNS} " + ("OK" if success else "FAIL"))
+                success, enc_ns, dec_ns, lat_ns, throughput = self._execute_single_run(plaintext, record=True)
+                thr_str = format_throughput_label(throughput)
+                logger.info(
+                    _(
+                        "measured_trial_log",
+                        m=m + 1,
+                        runs=config.MEASURED_RUNS,
+                        current=current_run,
+                        total=total_runs,
+                        status="OK" if success else "FAIL",
+                        enc_ms=enc_ns / 1_000_000.0,
+                        dec_ms=dec_ns / 1_000_000.0,
+                        lat_ms=lat_ns / 1_000_000.0,
+                        thr_str=thr_str,
+                    )
+                )
                     
         experiment_end = datetime.datetime.now()
         duration = experiment_end - experiment_start
@@ -78,6 +132,7 @@ class BenchmarkRunner:
         empty_nonce, empty_ciphertext, empty_tag = crypto.encrypt(self.sender.session_key, b"")
         self.sender.send_message(protocol.package(empty_nonce, empty_ciphertext, empty_tag))
         
+        print("", flush=True)
         logger.info(_("exp_complete"))
         logger.info(_("total_time", duration=duration))
         if self.data_writer:
@@ -115,7 +170,7 @@ class BenchmarkRunner:
                     throughput_bytes_per_s=throughput,
                     success=success
                 )
-            return success
+            return success, encryption_time_ns, decryption_time_ns, latency_ns, throughput
         except Exception as e:
             logger.error(_("err_run", e=e))
             if record and self.data_writer:
@@ -128,4 +183,4 @@ class BenchmarkRunner:
                     throughput_bytes_per_s=0.0,
                     success=False
                 )
-            return False
+            return False, 0, 0, 0, 0.0

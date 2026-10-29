@@ -30,6 +30,11 @@ TRANSLATIONS = {
         "reps_slider": "Measured Repetitions per Size",
         "run_btn": "Run Experiment",
         "terminal_output": "Terminal Output",
+        "search_terminal": "Search Terminal Output",
+        "search_terminal_placeholder": "Filter log lines (e.g., 1024, Handshake, ERROR, Run 30/30)...",
+        "case_sensitive": "Case Sensitive",
+        "show_warmup_logs": "Show Warm-up Logs",
+        "clear_search": "Clear",
         
         "summary_stats": "Summary Statistics",
         "download_summary": "Download summary.csv",
@@ -59,10 +64,15 @@ TRANSLATIONS = {
         "restart_btn": "Restart Server",
         "language_sel": "Language / Bahasa",
         
-        "starting_exp": "Starting experiment: {sizes} sizes, {runs} runs per size (+ {warmups} warm-ups)",
-        "exec_order": "Execution order: {plan}",
-        "msg_size": "Message Size: {size} bytes",
-        "exp_complete": "Experiment complete!",
+        "starting_exp": "Starting experiment: {sizes} payload sizes, {runs} measured runs per size (+ {warmups} warm-ups)",
+        "exec_order": "Execution sequence: {plan}",
+
+        "msg_size": "================================================================================\n  MESSAGE SIZE: {size_label}  —  [Size {idx}/{total_sizes}]\n================================================================================",
+        "warmup_phase_start": "  [WARM-UP PHASE] Executing {warmups} warm-up trials (discarded from CSV)...",
+        "warmup_trial_log": "  • Warm-up {w:>2}/{warmups:<2}                │ {status:<4} │ Enc: {enc_ms:>7.3f} ms │ Dec: {dec_ms:>7.3f} ms │ RTT: {lat_ms:>7.3f} ms  (discarded)",
+        "measured_phase_start": "  [MEASURED PHASE] Executing {runs} measured trials (recorded to CSV)...",
+        "measured_trial_log": "  • Trial   {m:>2}/{runs:<2} (Run {current:>3}/{total:<3}) │ {status:<4} │ Enc: {enc_ms:>7.3f} ms │ Dec: {dec_ms:>7.3f} ms │ RTT: {lat_ms:>7.3f} ms │ Thr: {thr_str:>11}",
+        "exp_complete": "Benchmark completed successfully!",
         "total_time": "Total time: {duration}",
         "results_saved": "Results saved to: {filename}",
         
@@ -87,6 +97,11 @@ TRANSLATIONS = {
         "reps_slider": "Pengulangan yang Diukur per Ukuran",
         "run_btn": "Jalankan Eksperimen",
         "terminal_output": "Keluaran Terminal",
+        "search_terminal": "Cari Keluaran Terminal",
+        "search_terminal_placeholder": "Saring baris log (mis., 1024, Handshake, ERROR, Run 30/30)...",
+        "case_sensitive": "Peka Huruf Besar/Kecil",
+        "show_warmup_logs": "Tampilkan Log Warm-up",
+        "clear_search": "Bersihkan",
         
         "summary_stats": "Statistik Ringkasan",
         "download_summary": "Unduh summary.csv",
@@ -116,10 +131,15 @@ TRANSLATIONS = {
         "restart_btn": "Mulai Ulang Server",
         "language_sel": "Language / Bahasa",
         
-        "starting_exp": "Memulai eksperimen: {sizes} ukuran, {runs} proses per ukuran (+ {warmups} pemanasan)",
+        "starting_exp": "Memulai eksperimen: {sizes} ukuran muatan, {runs} proses terukur per ukuran (+ {warmups} pemanasan)",
         "exec_order": "Urutan eksekusi: {plan}",
-        "msg_size": "Ukuran Pesan: {size} byte",
-        "exp_complete": "Eksperimen selesai!",
+
+        "msg_size": "================================================================================\n  UKURAN PESAN: {size_label}  —  [Ukuran {idx}/{total_sizes}]\n================================================================================",
+        "warmup_phase_start": "  [FASE WARM-UP] Menjalankan {warmups} percobaan pemanasan (tidak disimpan ke CSV)...",
+        "warmup_trial_log": "  • Pemanasan {w:>2}/{warmups:<2}              │ {status:<4} │ Enk: {enc_ms:>7.3f} ms │ Dek: {dec_ms:>7.3f} ms │ RTT: {lat_ms:>7.3f} ms  (diabaikan)",
+        "measured_phase_start": "  [FASE TERUKUR] Menjalankan {runs} percobaan terukur (disimpan ke CSV)...",
+        "measured_trial_log": "  • Uji Coba {m:>2}/{runs:<2} (Proses {current:>3}/{total:<3}) │ {status:<4} │ Enk: {enc_ms:>7.3f} ms │ Dek: {dec_ms:>7.3f} ms │ RTT: {lat_ms:>7.3f} ms │ Thr: {thr_str:>11}",
+        "exp_complete": "Benchmark berhasil diselesaikan!",
         "total_time": "Total waktu: {duration}",
         "results_saved": "Hasil disimpan di: {filename}",
         

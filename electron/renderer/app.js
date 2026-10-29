@@ -167,20 +167,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateSplashVisibility();
   }
 
+  const selectableCSS = `
+    * {
+      -webkit-user-select: text !important;
+      user-select: text !important;
+    }
+    button, [role="tab"], .tab-nav, .segmented-control, svg {
+      -webkit-user-select: none !important;
+      user-select: none !important;
+    }
+    textarea, pre, code, .prose, table, [data-testid="textbox"] textarea, .output-markdown {
+      -webkit-user-select: text !important;
+      user-select: text !important;
+      cursor: text !important;
+    }
+  `;
+
+  function applySelectableStyles(wv) {
+    if (!wv) return;
+    try {
+      wv.insertCSS(selectableCSS);
+    } catch (e) {
+      // Ignore if webview not yet ready
+    }
+  }
+
   // Webview lifecycle listeners
   if (viewApp) {
     viewApp.addEventListener('dom-ready', () => {
       splashApp.classList.add('hidden');
+      applySelectableStyles(viewApp);
     });
   }
   if (viewChatAlice) {
     viewChatAlice.addEventListener('dom-ready', () => {
       splashChat.classList.add('hidden');
+      applySelectableStyles(viewChatAlice);
     });
   }
   if (viewChatBob) {
     viewChatBob.addEventListener('dom-ready', () => {
       splashChat.classList.add('hidden');
+      applySelectableStyles(viewChatBob);
     });
   }
 

@@ -47,6 +47,41 @@ def append_log(log_str, new_msg):
         return log_str + new_msg + "\n"
 
 
+def filter_terminal_output(raw_log, query="", case_sensitive=False, show_warmup=False):
+    """Filters terminal/crypto log lines by warm-up visibility and search query while preserving line numbers."""
+    if not raw_log:
+        return ""
+
+    raw_lines = raw_log.splitlines()
+    visible_lines = []
+    in_warmup_block = False
+
+    for line in raw_lines:
+        if "[WARM-UP PHASE]" in line or "[FASE WARM-UP]" in line:
+            in_warmup_block = True
+        elif "[MEASURED PHASE]" in line or "[FASE TERUKUR]" in line or "MESSAGE SIZE:" in line or "UKURAN PESAN:" in line or "========== " in line:
+            in_warmup_block = False
+
+        if not show_warmup and (in_warmup_block or "Warm-up" in line or "Pemanasan" in line or "[WARM-UP" in line):
+            continue
+        visible_lines.append(line)
+
+    if not query or not query.strip():
+        return "\n".join(visible_lines)
+
+    needle = query if case_sensitive else query.lower()
+    matched = []
+    for idx, line in enumerate(visible_lines, start=1):
+        haystack = line if case_sensitive else line.lower()
+        if needle in haystack:
+            matched.append(f"[L{idx}] {line}")
+
+    header = f"--- Showing {len(matched)} of {len(visible_lines)} lines matching '{query}' ---\n"
+    if not matched:
+        return header + "(No matching lines)"
+    return header + "\n".join(matched)
+
+
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
@@ -588,14 +623,14 @@ def update_pt_plots(df, plot_type, trendline, log_x, log_y):
 
     return enc_fig, dec_fig, lat_fig, thr_fig
 
-def run_planned_testing():
+def run_planned_testing(search_query="", case_sensitive=False, show_warmup=False):
     import subprocess
     import os
     try:
-        result = subprocess.run(["python", "run_e2e.py"], capture_output=True, text=True, timeout=120)
+        result = subprocess.run([sys.executable if "sys" in globals() else "python", "run_e2e.py"], capture_output=True, text=True, timeout=120)
         output = result.stdout
         if result.stderr:
-            output += "\\nSTDERR:\\n" + result.stderr
+            output += "\nSTDERR:\n" + result.stderr
             
         import pandas as pd
         import glob
@@ -615,7 +650,7 @@ def run_planned_testing():
             if os.path.exists(latest_file):
                 df = pd.read_csv(latest_file)
             
-            if not df.empty:
+            if df is not None and not df.empty:
                 df["Encryption Time (ms)"] = df["encryption_time_ns"] / 1_000_000
                 df["Decryption Time (ms)"] = df["decryption_time_ns"] / 1_000_000
                 df["Latency (ms)"] = df["latency_ns"] / 1_000_000
@@ -625,9 +660,11 @@ def run_planned_testing():
                 # Initial plots (Line, log_x=True)
                 enc_fig, dec_fig, lat_fig, thr_fig = update_pt_plots(df, "Line (Aggregated)", "None", True, False)
 
-        return output, enc_fig, dec_fig, lat_fig, thr_fig, df, df
+        filtered_output = filter_terminal_output(output, search_query, case_sensitive, show_warmup)
+        return output, filtered_output, enc_fig, dec_fig, lat_fig, thr_fig, df, df
     except Exception as e:
-        return f"Error running planned testing: {str(e)}", None, None, None, None, None, None
+        err_msg = f"Error running planned testing: {str(e)}"
+        return err_msg, filter_terminal_output(err_msg, search_query, case_sensitive, show_warmup), None, None, None, None, None, None
 
 # ---------------------------------------------------------------------------
 # UI
@@ -635,7 +672,15 @@ def run_planned_testing():
 
 init_db()
 
-with gr.Blocks(title="E2EE Chat Demo") as app:
+SELECTABLE_CSS = """
+textarea, pre, code, .prose, table, .table-wrap, [data-testid="textbox"] textarea, .output-markdown {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text !important;
+}
+"""
+
+with gr.Blocks(title="E2EE Chat Demo", css=SELECTABLE_CSS) as app:
     gr.Markdown("# E2EE Interactive  Chat")
     gr.Markdown(
         ""
@@ -672,10 +717,28 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                             send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
 
                     with gr.Column(scale=1):
+                        raw_crypto_log = gr.State("")
+                        with gr.Row(equal_height=True):
+                            crypto_search_box = gr.Textbox(
+                                placeholder="Search Crypto Log (e.g., Nonce, Auth Tag, Decrypt)...",
+                                label="Search Crypto Log",
+                                scale=4,
+                                container=True
+                            )
+                            crypto_case_sensitive = gr.Checkbox(
+                                label="Case Sensitive",
+                                value=False,
+                                scale=1
+                            )
+                            crypto_clear_search_btn = gr.Button(
+                                "Clear",
+                                variant="secondary",
+                                scale=1
+                            )
                         crypto_log = gr.Textbox(
                             label="Crypto Log (Verbose)",
-                            lines=27,
-                            max_lines=27,
+                            lines=24,
+                            max_lines=24,
                             interactive=False,
                             autoscroll=True,
                             elem_id="crypto_log_box",
@@ -770,6 +833,29 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
             with gr.Tabs():
                 with gr.Tab("Test and Output"):
                     run_test_btn = gr.Button("Run E2E Test", variant="primary")
+                    pt_raw_log_state = gr.State("")
+                    with gr.Row(equal_height=True):
+                        pt_search_box = gr.Textbox(
+                            label="Search Test Output",
+                            placeholder="Filter test output lines (e.g., 1024, Handshake, ERROR)...",
+                            scale=4,
+                            container=True
+                        )
+                        pt_show_warmup = gr.Checkbox(
+                            label="Show Warm-up Logs",
+                            value=False,
+                            scale=1
+                        )
+                        pt_case_sensitive = gr.Checkbox(
+                            label="Case Sensitive",
+                            value=False,
+                            scale=1
+                        )
+                        pt_clear_search_btn = gr.Button(
+                            "Clear",
+                            variant="secondary",
+                            scale=1
+                        )
                     test_output = gr.Textbox(label="Test Output", interactive=False, lines=15)
                     
                 with gr.Tab("Raw Result"):
@@ -792,14 +878,38 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     # ---- Event wiring ----
     regen_key_btn.click(
         fn=regenerate_key,
-        inputs=[crypto_log, session, chatbot],
-        outputs=[crypto_log, session, chatbot],
+        inputs=[raw_crypto_log, session, chatbot],
+        outputs=[raw_crypto_log, session, chatbot],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
     )
 
     reset_server_btn.click(
         fn=restart_server,
-        inputs=[chatbot, crypto_log, session],
-        outputs=[chatbot, crypto_log, session],
+        inputs=[chatbot, raw_crypto_log, session],
+        outputs=[chatbot, raw_crypto_log, session],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
+    )
+
+    crypto_search_box.change(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
+    )
+    crypto_case_sensitive.change(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
+    )
+    crypto_clear_search_btn.click(
+        fn=lambda raw_log: ("", raw_log),
+        inputs=[raw_crypto_log],
+        outputs=[crypto_search_box, crypto_log],
     )
 
     crypto_log.change(
@@ -821,31 +931,51 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     login_btn.click(
         fn=login,
         inputs=[identity_dd, session, chatbot],
-        outputs=[client_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+        outputs=[client_view, chatbot, raw_crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
     )
 
     logout_btn.click(
         fn=logout,
         inputs=[session, chatbot],
-        outputs=[client_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+        outputs=[client_view, chatbot, raw_crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
     )
 
     send_btn.click(
         fn=send_message,
-        inputs=[msg_input, chatbot, crypto_log, session],
-        outputs=[msg_input, chatbot, crypto_log, session],
+        inputs=[msg_input, chatbot, raw_crypto_log, session],
+        outputs=[msg_input, chatbot, raw_crypto_log, session],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
     )
 
     msg_input.submit(
         fn=send_message,
-        inputs=[msg_input, chatbot, crypto_log, session],
-        outputs=[msg_input, chatbot, crypto_log, session],
+        inputs=[msg_input, chatbot, raw_crypto_log, session],
+        outputs=[msg_input, chatbot, raw_crypto_log, session],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
     )
 
     refresh_btn.click(
         fn=receive_messages,
-        inputs=[chatbot, crypto_log, session],
-        outputs=[chatbot, crypto_log, session],
+        inputs=[chatbot, raw_crypto_log, session],
+        outputs=[chatbot, raw_crypto_log, session],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
     )
 
     auto_refresh.change(
@@ -856,8 +986,12 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     
     timer.tick(
         fn=receive_messages,
-        inputs=[chatbot, crypto_log, session],
-        outputs=[chatbot, crypto_log, session],
+        inputs=[chatbot, raw_crypto_log, session],
+        outputs=[chatbot, raw_crypto_log, session],
+    ).then(
+        fn=filter_terminal_output,
+        inputs=[raw_crypto_log, crypto_search_box, crypto_case_sensitive],
+        outputs=[crypto_log],
     )
 
     db_auto_refresh.change(
@@ -907,8 +1041,28 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
 
     run_test_btn.click(
         fn=run_planned_testing,
-        inputs=[],
-        outputs=[test_output, pt_enc_img, pt_dec_img, pt_lat_img, pt_thr_img, pt_results_df, pt_dataframe_state]
+        inputs=[pt_search_box, pt_case_sensitive, pt_show_warmup],
+        outputs=[pt_raw_log_state, test_output, pt_enc_img, pt_dec_img, pt_lat_img, pt_thr_img, pt_results_df, pt_dataframe_state]
+    )
+    pt_search_box.change(
+        fn=filter_terminal_output,
+        inputs=[pt_raw_log_state, pt_search_box, pt_case_sensitive, pt_show_warmup],
+        outputs=[test_output],
+    )
+    pt_case_sensitive.change(
+        fn=filter_terminal_output,
+        inputs=[pt_raw_log_state, pt_search_box, pt_case_sensitive, pt_show_warmup],
+        outputs=[test_output],
+    )
+    pt_show_warmup.change(
+        fn=filter_terminal_output,
+        inputs=[pt_raw_log_state, pt_search_box, pt_case_sensitive, pt_show_warmup],
+        outputs=[test_output],
+    )
+    pt_clear_search_btn.click(
+        fn=lambda raw_log, show_warmup: ("", filter_terminal_output(raw_log, "", False, show_warmup)),
+        inputs=[pt_raw_log_state, pt_show_warmup],
+        outputs=[pt_search_box, test_output],
     )
 
     def on_page_load(request: gr.Request = None):
