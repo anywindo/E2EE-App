@@ -82,7 +82,6 @@ def build_binary(script_name, target_name):
         "--exclude-module", "tkinter",
         "--exclude-module", "tcl",
         "--exclude-module", "pytest",
-        "--exclude-module", "unittest",
         "--exclude-module", "IPython",
         "--exclude-module", "pandas.tests",
         "--exclude-module", "numpy.tests",
